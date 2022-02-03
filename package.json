@@ -1,0 +1,31 @@
+{
+  "name": "rootmd-server",
+  "version": "0.0.1",
+  "description": "server for sharing rootmd notebooks",
+  "main": "index.js",
+  "scripts": {
+    "test": "test",
+    "start" : 'PORT=9000 UPLOAD_DIR=`pwd`/public  UPLOAD_TMP_DIR=/tmp/ TOKEN="qwe4w462e34fdf7879789k46jdfbakjs9843982e" node index.js'
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jdbrice/rootmd-server.git"
+  },
+  "keywords": [
+    "rootmd",
+    "ROOT",
+    "physics",
+    "data",
+    "analysis"
+  ],
+  "author": "Daniel Brandenburg",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jdbrice/rootmd-server/issues"
+  },
+  "homepage": "https://github.com/jdbrice/rootmd-server#readme",
+  "dependencies": {
+    "express": "^4.17.2",
+    "formidable": "^2.0.1"
+  }
+}
