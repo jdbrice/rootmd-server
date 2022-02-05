@@ -1,108 +1,80 @@
 'use strict';
-const express = require('express')
-const app = express()
-app.use(express.static('public'))
-const port = 3000
 
-// app.get('/', (req, res) => {
-//   res.send('Hello World!')
-// })
+const express = require('express');
+const fileUpload = require('express-fileupload');
+const cors = require('cors');
+const bodyParser = require('body-parser');
+const morgan = require('morgan');
+const _ = require('lodash');
+
+
+const app = express();
+app.use(express.static('public'));
+app.use(fileUpload({
+  createParentPath: true
+}));
+
+app.use(cors());
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({extended: true}));
+app.use(morgan('dev'));
+
+// PORT to listen on
+const port = process.env.PORT || 3000;
+// TOKEN required for upload
+const upload_token = process.env.TOKEN || "d07761d8f74207917c61dd05627dab6d";
+
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
+  console.log(`App is listening on port ${port}.`)
 })
 
-
-const http = require('http');
-const formidable = require('formidable');
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-
-const uport = process.env.PORT || 8080;
-const uploadDir = process.env.UPLOAD_DIR || process.argv[2] || process.cwd();
-const uploadTmpDir = process.env.UPLOAD_TMP_DIR || uploadDir;
-const token = process.env.TOKEN || false;
-const pathMatchRegExp = (process.env.PATH_REGEXP) ? new RegExp(process.env.PATH_REGEXP) : /^[a-zA-Z0-9-_/]*$/;
-const maxFileSize = (parseInt(process.env.MAX_FILE_SIZE, 10) || 200) * 1024 * 1024;
-
-console.log('HTTP Server Upload');
-console.log(`Upload target dir is ${uploadDir}`);
-
-http.createServer((req, res) => {
-  if (req.url == '/upload' && req.method.toLowerCase() == 'post') {
-    const form = new formidable.IncomingForm({
-      uploadDir: uploadTmpDir,
-      multiples: true,
-      maxFileSize: maxFileSize
-    });
-
-    form.parse(req, (err, fields, files) => {
-      if (err) {
-        console.log(new Date().toUTCString(), '- Error parsing form data: ' + err.message);
-        res.write('Error parsing form data! ' + err.message);
-        return res.end();
-      }
-
-      if (token && fields.token !== token) {
-        res.write('Wrong token!');
-        return res.end();
-      }
-
-      if (!Array.isArray(files.uploads)) {
-        files.uploads = [files.uploads];
-      }
-
-      if (fields.path) {
-        if (!fields.path.match(pathMatchRegExp)) {
-          res.write('Invalid path!');
-          return res.end();
-        }
-      } else {
-        fields.path = '';
-      }
-
-      fs.stat(path.join(uploadDir, fields.path), (err, stats) => {
-        if (err) {
-          res.write('Path does not exist!');
-          return res.end();
-        }
-
-        files.uploads.forEach((file) => {
-          if (!file) return;
-          const newPath = path.join(uploadDir, fields.path, file.name);
-          fs.renameSync(file.path, newPath);
-          console.log(new Date().toUTCString(), '- File uploaded', newPath);
-        });
-
-        res.write('File uploaded!');
-        res.end();
+app.post('/upload', async (req, res) => {
+  try {
+      if(!req.files){
+          res.send({
+              status: false,
+              message: 'No file uploaded'
+          });
+      } else if ( req.body.token != upload_token ) {
+        res.send({
+          status: false,
+          message: 'Invalid Token'
       });
+      } else {
+          let data = []; 
+          let my_hash = "";
 
-    });
-  } else {
-    res.writeHead(200, {'Content-Type': 'text/html'});
-    res.write('<form action="upload" method="post" enctype="multipart/form-data">');
-    res.write('Files: <input type="file" name="uploads" multiple="multiple"><br />');
-    res.write('Upload path: <input type="text" name="path" value=""><br />');
-    if (token) {
-      res.write('Token: <input type="text" name="token" value=""><br />');
-    }
-    res.write('<input type="submit" value="Upload!">');
-    res.write('</form>');
-    return res.end();
-  }
-}).listen(uport, () => {
-  const ifaces = os.networkInterfaces();
-  Object.keys(ifaces).forEach((dev) => {
-    ifaces[dev].forEach((addr) => {
-      if (addr.family === 'IPv4') {
-        console.log(`  http://${addr.address}:${uport}/`);
-      } else if (addr.family === 'IPv6') {
-        console.log(`  http://[${addr.address}]:${uport}/`);
+          //loop all files
+          _.forEach(_.keysIn(req.files), (key) => {
+              let file = req.files[key];
+
+              if ( my_hash == "" ){
+                my_hash = encodeURIComponent(file.md5);
+                console.log( "HASH: " + my_hash );
+              }
+              
+              //move file to uploads directory
+              file.mv('./public/' + my_hash + "/" + file.name);
+
+              //push file details
+              data.push({
+                  name: file.name,
+                  mimetype: file.mimetype,
+                  size: file.size,
+                  link: '/public/' + my_hash + "/" + file.name
+              });
+          });
+          console.log( data );
+  
+          //return response
+          res.send({
+              status: true,
+              message: 'Files are uploaded',
+              data: data
+          });
       }
-    });
-  });
-
-  console.log('Hit CTRL-C to stop the server');
+  } catch (err) {
+      res.status(500).send(err);
+  }
 });
