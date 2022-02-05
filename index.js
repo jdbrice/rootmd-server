@@ -62,7 +62,7 @@ app.post('/upload', async (req, res) => {
                   name: file.name,
                   mimetype: file.mimetype,
                   size: file.size,
-                  link: '/public/' + my_hash + "/" + file.name
+                  link: 'https://rootmd.jdbburg.com/' + my_hash + "/" + file.name
               });
           });
           console.log( data );
